@@ -1,6 +1,9 @@
+import numpy as np
 import torch
 import os
 import config
+from PIL import Image
+from torchvision.utils import save_image
 
 def save_checkpoint(model, optimizer, filename="my_checkpoint.pth.tar"):
     """
@@ -15,6 +18,7 @@ def save_checkpoint(model, optimizer, filename="my_checkpoint.pth.tar"):
     }
     torch.save(checkpoint, filename)
 
+
 def load_checkpoint(checkpoint_file, model, optimizer, lr):
     """
     Function to load a checkpoint.
@@ -27,4 +31,23 @@ def load_checkpoint(checkpoint_file, model, optimizer, lr):
     for param_group in optimizer.param_groups:
         param_group["lr"] = lr
 
-def plot_examples():
+
+def plot_examples(low_res_folder, G):
+    """
+    Function to plot some generated high_res images examples
+    """
+    files = os.listdir(low_res_folder)
+
+    # Put Generator in evaluation mode
+    G.eval()
+
+    for file in files:
+        image = Image.open("test_images/" + file)
+        with torch.no_grad():
+            upscaled_img = G(
+                config.test_transform(image=np.asarray(image))["image"].unsqueeze(0).to(config.DEVICE)
+            )
+        save_image(upscaled_img * 0.5 + 0.5, f"saved/{file}")
+    
+    # Put generator in training mode
+    G.train()
