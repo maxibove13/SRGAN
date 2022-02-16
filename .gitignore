@@ -1,3 +1,5 @@
 /.venv_srgan
 /dataset
 /new_data
+*ipynb*
+/__pycache__
