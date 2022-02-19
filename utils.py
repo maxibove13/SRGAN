@@ -32,7 +32,7 @@ def load_checkpoint(checkpoint_file, model, optimizer, lr):
         param_group["lr"] = lr
 
 
-def plot_examples(low_res_folder, G):
+def plot_examples(low_res_folder, G, id):
     """
     Function to plot some generated high_res images examples
     """
@@ -42,12 +42,12 @@ def plot_examples(low_res_folder, G):
     G.eval()
 
     for file in files:
-        image = Image.open("test_images/" + file)
+        image = Image.open(low_res_folder + file)
         with torch.no_grad():
             upscaled_img = G(
                 config.test_transform(image=np.asarray(image))["image"].unsqueeze(0).to(config.DEVICE)
             )
-        save_image(upscaled_img * 0.5 + 0.5, f"saved/{file}")
+        save_image(upscaled_img * 0.5 + 0.5, f"saved/{file}_{id}")
     
     # Put generator in training mode
     G.train()
