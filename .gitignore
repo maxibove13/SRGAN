@@ -4,3 +4,6 @@
 *ipynb*
 /__pycache__
 .gitkeep
+/saved
+*pth.tar*
+/low_res
