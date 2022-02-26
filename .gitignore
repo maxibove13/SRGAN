@@ -1,5 +1,6 @@
 /.venv_srgan
 /dataset
+/datasets
 /new_data
 *ipynb*
 /__pycache__
@@ -7,3 +8,4 @@
 /saved
 *pth.tar*
 /low_res
+/figures
