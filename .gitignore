@@ -6,10 +6,12 @@
 /saved
 *pth.tar*
 /low_res
-/figures/*
 
+/figures/*
 /datasets/training/*
 /datasets/validation/*
 /datasets/testing/*
-
 /checkpoints/*
+
+# Except .gitkeep in order for the folders to be commited
+!.gitkeep
