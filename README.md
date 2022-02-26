@@ -11,7 +11,9 @@ Run cells in `srgan.ipynb`
 ## Validate the network
 ## Test the network
 
-In order to use the network to generate super resolution images from low resolution ones you can load a checkpoint with the last training and evaluate the Generator:
+In order to use the network to generate super resolution images from low resolution ones you can load a checkpoint with the last training given the training dataset and evaluate the Generator:
+
+Download this two [folders]() containing the checkpoints inside `checkpoints/` repository directory.
 
 ```bash
 python test_gen.py <r> <train_data>
