@@ -25,14 +25,12 @@ from utils import load_checkpoint, plot_examples
 testing = True # If not testing: validation
 r = 3 # Zoom factor
 
-def gen_sr_images(r, testing=True, train_data='DIV2K'):
+def gen_sr_images(testing=True, train_data='DIV2K'):
     """
     Function to generate super resolution images
 
     Parameters
     ----------
-    r : int
-        Zoom (crop) factor. Crops the image in the center r times.
 
     testing : bool = True
         If only testing (no high resolution image to validate. If false looks for the high resolution image to validate the results.
@@ -49,7 +47,7 @@ def gen_sr_images(r, testing=True, train_data='DIV2K'):
     # Define optimizer for Generator
     opt_gen = optim.Adam(gen.parameters(), lr=config.LEARNING_RATE, betas=(0.9, 0.999))
 
-    print("Loading checkpoint...")
+    print(f"Loading checkpoint from checkpoints/{train_data}...")
     # Load checkpoint (w&b of specified training)
     if config.LOAD_MODEL:
         load_checkpoint(
@@ -65,10 +63,10 @@ def gen_sr_images(r, testing=True, train_data='DIV2K'):
 
     print("Preparing comparison figure...")
     # Get list of generated super resolution images
-    sr_images = next(os.walk("datasets/testing/sr/"))[2]
+    sr_images = [sr for sr in next(os.walk("datasets/testing/sr/"))[2] if '.png' in sr]
 
     # Get list of testing images
-    test_images = next(os.walk("datasets/testing/"))[2]
+    test_images = [lr for lr in next(os.walk("datasets/testing/"))[2] if '.png' in lr]
 
     # If validating, get hr images
     if not testing:
@@ -82,45 +80,47 @@ def gen_sr_images(r, testing=True, train_data='DIV2K'):
         if not testing:
             hr_im = mpimg.imread(f"new_data/hr/{hr_images[idx]}")
 
-        # Get new widths and heights given zoom in factor r
-        w0 = sr_im.shape[0]//2-sr_im.shape[0]//r
-        w1 = sr_im.shape[0]//2+sr_im.shape[0]//r
-        h1 = sr_im.shape[1]//2-sr_im.shape[1]//r
-        h2 = sr_im.shape[1]//2+sr_im.shape[1]//r
-        w0_l = lr_im.shape[0]//2-lr_im.shape[0]//r
-        w1_l = lr_im.shape[0]//2+lr_im.shape[0]//r
-        h1_l = lr_im.shape[1]//2-lr_im.shape[1]//r
-        h2_l = lr_im.shape[1]//2+lr_im.shape[1]//r
-
-        # Crop images and define titles for comparison figure
-        ims = [lr_im[w0_l:w1_l, h1_l:h2_l, :], sr_im[w0:w1, h1:h2, :]]
-        titles = ["Low Resolution", "Super Resolution"]
-        if not testing:
-            ims.append(hr_im[w0:w1, h1:h2, :])
-            titles.append('High Resolution')
-
         # Initialize figure and axes
-        fig, axs = plt.subplots(1,2) if testing else plt.subplots(1,3)
-        
-        # show image in each subplot, set title deactivate axis
-        for idx, ax in enumerate(ims):
-            axs[idx].imshow(ax)
-            axs[idx].set_title(titles[idx], fontsize=36)
-            axs[idx].axis('off')
+        fig, axs = plt.subplots(3,2) if testing else plt.subplots(3,3)
+
+        # Loop through different crop ratios
+        crop_r = [2, 4, 6]
+        for row, r in enumerate(crop_r):
+            # Get new widths and heights given zoom in factor r
+            w0 = sr_im.shape[0]//2-sr_im.shape[0]//r
+            w1 = sr_im.shape[0]//2+sr_im.shape[0]//r
+            h1 = sr_im.shape[1]//2-sr_im.shape[1]//r
+            h2 = sr_im.shape[1]//2+sr_im.shape[1]//r
+            w0_l = lr_im.shape[0]//2-lr_im.shape[0]//r
+            w1_l = lr_im.shape[0]//2+lr_im.shape[0]//r
+            h1_l = lr_im.shape[1]//2-lr_im.shape[1]//r
+            h2_l = lr_im.shape[1]//2+lr_im.shape[1]//r
+
+            # Crop images and define titles for comparison figure
+            ims = [lr_im[w0_l:w1_l, h1_l:h2_l, :], sr_im[w0:w1, h1:h2, :]]
+            titles = ["Low Resolution", "Super Resolution"]
+            if not testing:
+                ims.append(hr_im[w0:w1, h1:h2, :])
+                titles.append('High Resolution')
+            
+            # show image in each subplot, set title deactivate axis
+            for idx, ax in enumerate(ims):
+                axs[row, idx].imshow(ax)
+                axs[row, idx].set_title(titles[idx], fontsize=36)
+                axs[row, idx].axis('off')
 
         # Set size and save figure
         fig.set_size_inches((40, 40), forward=False)
-        fig.savefig(f"figures/test_{im}.png", bbox_inches='tight')
+        fig.savefig(f"figures/test_{im}", bbox_inches='tight')
 
-        print("Test finished.")
+    print("Test finished.")
 
 if __name__ == "__main__":
-    r = sys.argv[1]
     testing = True
     train_data='DIV2K'
-    if len(sys.argv) > 2:
-        train_data = str(sys.argv[3])
-        if len(sys.argv) > 3:
+    if len(sys.argv) > 1:
+        train_data = str(sys.argv[1])
+        if len(sys.argv) > 2:
             if sys.argv[2] == 'validation':
                testing = False
-    gen_sr_images(r, testing=testing, train_data=train_data)
+    gen_sr_images(testing=testing, train_data=train_data)

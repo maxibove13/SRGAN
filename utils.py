@@ -44,11 +44,13 @@ def plot_examples(low_res_folder, G, idx):
     for file in files:
         image = Image.open(low_res_folder + file)
         im_arr = np.asarray(image)[:,:,0:3] # Only RGB channels.
+        print(f"Opening LR image: {file} - {np.asarray(image)[:,:,0:3].shape}")
         with torch.no_grad():
             upscaled_img = G(
                 config.test_transform(image=im_arr)["image"].unsqueeze(0).to(config.DEVICE)
             )
         save_image(upscaled_img * 0.5 + 0.5, f"datasets/testing/sr/{file[:-4]}_sr.png")
+        print(f"Saving SR image: {file[:-4]}_sr.png")
 
     
     # Put generator in training mode
