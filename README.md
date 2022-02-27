@@ -32,4 +32,7 @@ drive.mount('/content/drive')
 
 # Navigate to repository
 %cd /content/drive/MyDrive/<Path_to_repo>
+
+# For some reason we need to explicitly install this package
+!pip install albumentations==0.4.6
 ```

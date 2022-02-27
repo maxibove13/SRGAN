@@ -10,7 +10,7 @@ __date__ = "02/22"
 
 # Built-in modules
 # Third-party modules
-from torch import nn
+from torch import nn, tanh
 # Local modules
 
 class ConvBlock(nn.Module):
@@ -86,7 +86,7 @@ class Generator(nn.Module):
         x = self.residuals(initial)
         x = self.convblock(x) + initial
         x = self.upsamples(x)
-        return nn.tanh(self.final(x))
+        return tanh(self.final(x))
 
 
 class Discriminator(nn.Module):
