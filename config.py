@@ -3,13 +3,14 @@ from PIL import Image
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 
-LOAD_MODEL = False
+LOAD_MODEL = True
 SAVE_MODEL = True
 CHECKPOINT_GEN = "gen.pth.tar"
 CHECKPOINT_DISC = "disc.pth.tar"
+TRAINING_SET = 'UxLES'
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 LEARNING_RATE = 1e-4
-NUM_EPOCHS = 100
+NUM_EPOCHS = 2
 BATCH_SIZE = 16
 NUM_WORKERS = 2
 HIGH_RES = 96
@@ -29,6 +30,14 @@ lowres_transform = A.Compose(
     [
         A.Resize(width=LOW_RES, height=LOW_RES, interpolation=Image.BICUBIC),
         A.Normalize(mean=[0, 0, 0], std=[1, 1, 1]),
+        ToTensorV2(),
+    ]
+)
+
+# Take a high res image and lower its resolution
+lr_transform = A.Compose(
+    [
+        A.Resize(width=LOW_RES, height=LOW_RES, interpolation=Image.BICUBIC),
         ToTensorV2(),
     ]
 )

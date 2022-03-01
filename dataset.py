@@ -11,19 +11,19 @@ class MyImageFolder(Dataset):
         self.data = []
         self.root_dir = root_dir
         self.class_names = os.listdir(root_dir)
-
-        for index, name in enumerate(self.class_names):
-            files = os.listdir(os.path.join(root_dir, name))
-            self.data += list(zip(files, [index] * len(files)))
+        files = os.listdir(root_dir)
+        self.data += list(zip(files, [1] * len(files)))
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, index):
         img_file, label = self.data[index]
-        root_and_dir = os.path.join(self.root_dir, self.class_names[label])
+        root_and_dir = self.root_dir
 
         image = np.array(Image.open(os.path.join(root_and_dir, img_file)))
+        if config.TRAINING_SET == 'UxLES':
+          image = image[:,:,0:3]
         image = config.both_transforms(image=image)["image"]
         high_res = config.highres_transform(image=image)["image"]
         low_res = config.lowres_transform(image=image)["image"]

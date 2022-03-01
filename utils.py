@@ -1,10 +1,50 @@
-import numpy as np
-import torch
 import os
-import config
-from PIL import Image
-from torchvision.utils import save_image
+import time
+from time import process_time
+
+import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
+from IPython import display
+from PIL import Image
+import torch
+from torch.utils.data import Dataset, DataLoader
+from torchvision.utils import save_image
+
+import config
+
+
+class MyImageFolder(Dataset):
+    def __init__(self, root_dir):
+        super(MyImageFolder, self).__init__()
+        self.data = []
+        self.root_dir = root_dir
+        self.class_names = os.listdir(root_dir)
+        files = os.listdir(root_dir)
+        self.data += list(zip(files, [1] * len(files)))
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, index):
+        img_file, label = self.data[index]
+        root_and_dir = self.root_dir
+
+        image = np.array(Image.open(os.path.join(root_and_dir, img_file)))
+        if config.TRAINING_SET == 'UxLES':
+          image = image[:,:,0:3]
+        image = config.both_transforms(image=image)["image"]
+        high_res = config.highres_transform(image=image)["image"]
+        low_res = config.lowres_transform(image=image)["image"]
+        return low_res, high_res
+
+def test():
+    dataset = MyImageFolder(root_dir="new_data/")
+    loader = DataLoader(dataset, batch_size=1, num_workers=8)
+
+    for low_res, high_res in loader:
+        print(low_res.shape)
+        print(high_res.shape)
 
 def save_checkpoint(model, optimizer, filename="my_checkpoint.pth.tar"):
     """
@@ -56,13 +96,22 @@ def plot_examples(low_res_folder, G, idx):
     # Put generator in training mode
     G.train()
 
-def plot_loss(epoch, loss_disc, loss_gen):
-  x = np.arange(0, epoch)
-  plt.plot(x, loss_disc, label='Discriminator loss')
-  plt.plot(x, loss_gen, label='Generator loss')
 
-  plt.title('Evolution of losses through epochs')
-  plt.xlabel('epochs')
-  plt.ylabel('loss')
-  plt.legend(loc='upper right')
-  plt.grid()
+def plot_loss(epoch, loss_disc, loss_gen, dataset, fig, ax, loader):
+    x = np.arange(0, epoch+1)
+    ax.plot(x, loss_disc, label='Discriminator loss', marker='o', color='b')
+    ax.plot(x, loss_gen, label='Generator loss', marker='o', color='r')
+    ax.set_title('Evolution of losses through epochs')
+    ax.set(xlabel='epochs')
+    ax.set(ylabel='loss')
+    if epoch == 0:
+      ax.legend(loc='upper right')
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+    display.clear_output(wait=True)
+    print(f"SRGAN training: \n")
+    print(f" Total training samples: {len(dataset)}\n Number of epochs: {config.NUM_EPOCHS}\n Mini batch size: {config.BATCH_SIZE}\n Number of batches: {len(loader)}\n Learning rate: {config.LEARNING_RATE}\n")
+    # Display current figure
+    display.display(fig)
+    # Pause execution 0.1s
+    time.sleep(0.1)
+
