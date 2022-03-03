@@ -51,7 +51,7 @@ def gen_sr_images(testing=True, train_data='DIV2K'):
     # Load checkpoint (w&b of specified training)
     if config.LOAD_MODEL:
         load_checkpoint(
-            f'checkpoints/{train_data}/{config.CHECKPOINT_GEN}',
+            os.path.join("checkpoints",train_data,config.CHECKPOINT_GEN),
             gen,
             opt_gen,
             config.LEARNING_RATE
@@ -70,7 +70,7 @@ def gen_sr_images(testing=True, train_data='DIV2K'):
 
     # If validating, get hr images
     if not testing:
-        hr_images = next(os.walk("new_data/hr/"))[2:][0]
+        hr_images = [f'{test_images[0][:-7]}.png']
 
     # Loop through all test_images
     for idx, im in enumerate(test_images):
@@ -78,7 +78,7 @@ def gen_sr_images(testing=True, train_data='DIV2K'):
         lr_im = mpimg.imread(f"datasets/testing/{im}")
         sr_im = mpimg.imread(f"datasets/testing/sr/{sr_images[idx]}")
         if not testing:
-            hr_im = mpimg.imread(f"new_data/hr/{hr_images[idx]}")
+            hr_im = mpimg.imread(f"datasets/validation/{train_data}/HR/{hr_images[idx]}")
 
         # Initialize figure and axes
         fig, axs = plt.subplots(3,2) if testing else plt.subplots(3,3)
@@ -110,7 +110,7 @@ def gen_sr_images(testing=True, train_data='DIV2K'):
                 axs[row, idx].axis('off')
 
         # Set size and save figure
-        fig.set_size_inches((40, 40), forward=False)
+        fig.set_size_inches((40, 26), forward=False)
         fig.savefig(f"figures/test_{im}", bbox_inches='tight')
 
     print("Test finished.")
