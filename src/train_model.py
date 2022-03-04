@@ -40,6 +40,7 @@ num_workers = config['train']['num_workers']
 def train_srgan(learning_rate, num_epochs, batch_size, num_workers):
     # Define device
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    print(f"Using device: {torch.cuda.get_device_name()}")
 
     # Import High Resolution images (dataset)
     print("Importing dataset...")
@@ -93,7 +94,7 @@ def train_srgan(learning_rate, num_epochs, batch_size, num_workers):
     fig, ax = plt.subplots(figsize=(10,6), dpi= 80)
 
     for epoch in tqdm(range(num_epochs)):
-        for idx, (low_res, high_res) in tqdm(enumerate(loader)):
+        for idx, (low_res, high_res) in enumerate(loader):
 
             # Send images to device
             high_res = high_res.to(device)
