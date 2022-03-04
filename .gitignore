@@ -13,19 +13,9 @@ test.ipynb
 # Ignore pycache files
 *.pyc
 
-/.venv_srgan
-/dataset
-/new_data
-*ipynb*
-/__pycache__
-/saved
-/low_res
+# Ignore venv dir
+.venv_srgan
 
-/figures/*
-/datasets/training/*
-/datasets/validation/*
-/datasets/testing/*
-/models/*
 
 # Except .gitkeep in order for the folders to be commited
 !.gitkeep
