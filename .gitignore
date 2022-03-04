@@ -1,17 +1,31 @@
+# Ignore config files
+config.yaml
+
+# Ignore dataset
+data
+
+# Ignore models
+models/*
+
+# Ignore test notebooks
+test.ipynb
+
+# Ignore pycache files
+*.pyc
+
 /.venv_srgan
 /dataset
 /new_data
 *ipynb*
 /__pycache__
 /saved
-*pth.tar*
 /low_res
 
 /figures/*
 /datasets/training/*
 /datasets/validation/*
 /datasets/testing/*
-/checkpoints/*
+/models/*
 
 # Except .gitkeep in order for the folders to be commited
 !.gitkeep

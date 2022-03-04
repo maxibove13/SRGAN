@@ -10,8 +10,13 @@ __date__ = "02/22"
 
 # Built-in modules
 # Third-party modules
+import torch
 from torch import nn, tanh
+from torchvision.models import vgg19
 # Local modules
+
+# Define device
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 class ConvBlock(nn.Module):
     # Conv -> BN (Batch Norm) -> Leaky/PReLu
@@ -120,3 +125,61 @@ class Discriminator(nn.Module):
     def forward(self, x):
         x = self.blocks(x)
         return self.classifier(x)
+        
+class VGGLoss(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.vgg = vgg19(pretrained=True).features[:36].eval().to(device)
+        self.loss = nn.MSELoss()
+
+        for param in self.vgg.parameters():
+            param.requires_grad = False
+
+    def forward(self, input, target):
+        vgg_input_features = self.vgg(input)
+        vgg_target_features = self.vgg(input)
+        return self.loss(vgg_input_features, vgg_target_features)
+
+### Train Discriminator: max log(D(x)) + log(1 - D(G(z)))
+def train_discriminator(D, opt, fake, high_res, bce):
+
+    # Reset gradients to zero
+    opt.zero_grad()
+
+    # Train on real data
+    pred_real = D(high_res)
+    loss_real = bce(pred_real, torch.ones_like(pred_real) - 0.1 * torch.rand_like(pred_real))
+
+    # Train on fake data
+    pred_fake = D(fake.detach())
+    loss_fake = bce(pred_fake, torch.zeros_like(pred_fake))
+
+    loss = loss_real + loss_fake
+
+    # Backward pass
+    loss.backward()
+    # Update weights
+    opt.step()
+
+    return loss
+
+### Train Generator: min log(1 - D(G(z))) <-> max log(D(G(z))
+def train_generator(D, opt, fake, high_res, vgg_loss, mse, bce):
+
+    # Reset gradients to zero
+    opt.zero_grad()
+
+    pred_fake = D(fake)
+
+    adv_loss = 1e-3 * bce(pred_fake, torch.ones_like(pred_fake))
+    vgg_loss = 0.006 * vgg_loss(fake, high_res)
+    mse_loss = mse(fake, high_res)
+
+    loss = adv_loss + vgg_loss + mse_loss
+
+    # Backward pass
+    loss.backward()
+    # Update weights
+    opt.step()
+
+    return loss

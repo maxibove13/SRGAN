@@ -1,50 +1,36 @@
+#!/usr/bin/env python3
+# -*- coding: UTF-8 -*-
+
+"""Module with general utilities functions"""
+
+__author__ = "Maximiliano Bove"
+__email__ = "maxibove13@gmail.com"
+__status__ = "Development"
+__date__ = "03/22"
+
+# Built-in modules
 import os
 import time
-from time import process_time
 
+# Third-party modules
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 from IPython import display
+
 from PIL import Image
+
 import torch
-from torch.utils.data import Dataset, DataLoader
 from torchvision.utils import save_image
 
-import config
+import yaml
 
 
-class MyImageFolder(Dataset):
-    def __init__(self, root_dir):
-        super(MyImageFolder, self).__init__()
-        self.data = []
-        self.root_dir = root_dir
-        self.class_names = os.listdir(root_dir)
-        files = os.listdir(root_dir)
-        self.data += list(zip(files, [1] * len(files)))
+# read config file
+with open('config.yaml') as file:
+    config = yaml.safe_load(file)
 
-    def __len__(self):
-        return len(self.data)
 
-    def __getitem__(self, index):
-        img_file, label = self.data[index]
-        root_and_dir = self.root_dir
-
-        image = np.array(Image.open(os.path.join(root_and_dir, img_file)))
-        if config.TRAINING_SET == 'UxLES':
-          image = image[:,:,0:3]
-        image = config.both_transforms(image=image)["image"]
-        high_res = config.highres_transform(image=image)["image"]
-        low_res = config.lowres_transform(image=image)["image"]
-        return low_res, high_res
-
-def test():
-    dataset = MyImageFolder(root_dir="new_data/")
-    loader = DataLoader(dataset, batch_size=1, num_workers=8)
-
-    for low_res, high_res in loader:
-        print(low_res.shape)
-        print(high_res.shape)
 
 def save_checkpoint(model, optimizer, filename="my_checkpoint.pth.tar"):
     """
@@ -59,11 +45,11 @@ def save_checkpoint(model, optimizer, filename="my_checkpoint.pth.tar"):
     torch.save(checkpoint, filename)
 
 
-def load_checkpoint(checkpoint_file, model, optimizer, lr):
+def load_checkpoint(checkpoint_file, model, optimizer, lr, device):
     """
     Function to load a checkpoint.
     """
-    checkpoint = torch.load(checkpoint_file, map_location=config.DEVICE)
+    checkpoint = torch.load(checkpoint_file, map_location=device)
     model.load_state_dict(checkpoint["state_dict"])
     optimizer.load_state_dict(checkpoint["optimizer"])
 
@@ -114,4 +100,3 @@ def plot_loss(epoch, loss_disc, loss_gen, dataset, fig, ax, loader):
     display.display(fig)
     # Pause execution 0.1s
     time.sleep(0.1)
-

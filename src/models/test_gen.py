@@ -15,17 +15,28 @@ import sys
 # Third-party modules
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
+import torch
 import torch.optim as optim
+import yaml
 
 # Local modules
 import config
-from model import Generator
-from utils import load_checkpoint, plot_examples
+from src.models.model import Generator
+from src.utils import load_checkpoint, plot_examples
+
+# read yaml file
+with open('config.yaml') as file:
+    config = yaml.safe_load(file)
+# By default hyperparameters are defined by config.yaml
+learning_rate = config['train']['learning_rate']
+num_epochs = config['train']['num_epochs']
+batch_size = config['train']['batch_size']
+num_workers = config['train']['num_workers']
 
 testing = True # If not testing: validation
-r = 3 # Zoom factor
+r = 3 # Zoom factor for comparison figure
 
-def gen_sr_images(testing=True, train_data='DIV2K'):
+def gen_sr_images(learning_rate, testing=True, train_data='DIV2K'):
     """
     Function to generate super resolution images
 
@@ -36,25 +47,28 @@ def gen_sr_images(testing=True, train_data='DIV2K'):
         If only testing (no high resolution image to validate. If false looks for the high resolution image to validate the results.
 
     train_data : str = 'DIV2K'
-        Choose which checkpoints to use. That is, either trained by DIV2K dataset or UxLES dataset.
+        Choose which model to use. That is, either trained by DIV2K dataset or UxLES dataset.
 
     Returns
     -------
     """
+    # Define device
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
     # Initialize SRGAN Generator
     print("Initializing Generator and optimizer...")
-    gen = Generator(in_channels=3).to(config.DEVICE)
+    gen = Generator(in_channels=3).to(device)
     # Define optimizer for Generator
-    opt_gen = optim.Adam(gen.parameters(), lr=config.LEARNING_RATE, betas=(0.9, 0.999))
+    opt_gen = optim.Adam(gen.parameters(), lr=learning_rate, betas=(0.9, 0.999))
 
     print(f"Loading checkpoint from checkpoints/{train_data}...")
     # Load checkpoint (w&b of specified training)
-    if config.LOAD_MODEL:
+    if config['model']['load']:
         load_checkpoint(
-            os.path.join("checkpoints",train_data,config.CHECKPOINT_GEN),
+            os.path.join("checkpoints",train_data,config['models']['gen']),
             gen,
             opt_gen,
-            config.LEARNING_RATE
+            
         )
 
     print("Generating Super Resolution images...")
@@ -123,4 +137,4 @@ if __name__ == "__main__":
         if len(sys.argv) > 2:
             if sys.argv[2] == 'validation':
                testing = False
-    gen_sr_images(testing=testing, train_data=train_data)
+    gen_sr_images(learning_rate, testing=testing, train_data=train_data)
