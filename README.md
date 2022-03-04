@@ -4,6 +4,10 @@ A naive implementation of a Super-Resolution GAN.
 Based on the work by Ledig et. al. 2017
 arxiv.org/abs/1609.04802
 
+## Instructions
+
+Copy `config_sample.yaml` file and rename it `config.yaml` in order to modify any configuration parameter you want without modifying the version control.
+
 ## Train the network
 
 Run cells in `srgan.ipynb`

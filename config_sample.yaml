@@ -1,0 +1,27 @@
+data:
+  rootdir: data
+  dataset: DIV2K
+  high_res: 96
+  upscale_factor: 4 
+  img_channels: 3
+
+# Pretrained models
+models:
+  load: True
+  save: False
+  rootdir: models
+  gen: gen.div2k.tar
+  disc: disc.div2k.tar
+
+# Training hyperparameters
+train:
+  learning_rate: 1.0e-4
+  num_epochs: 1
+  batch_size: 16
+  num_workers: 2 # number of processes that gen batches in parallel
+
+validation:
+  n_splits: 5
+
+figures:
+  dir: figures
