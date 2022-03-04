@@ -19,3 +19,4 @@ test.ipynb
 
 # Except .gitkeep in order for the folders to be commited
 !.gitkeep
+!src/data
