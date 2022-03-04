@@ -13,8 +13,11 @@ test.ipynb
 # Ignore pycache files
 *.pyc
 
-# Ignore venv dir
-.venv_srgan
+# Ignore any venv dir
+.venv*
+
+# Ignore figures content
+figures/*
 
 
 # Except .gitkeep in order for the folders to be commited

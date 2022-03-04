@@ -21,6 +21,7 @@ from torch import nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 import yaml
+from tqdm import tqdm
 
 # Local modules
 from data.data_utils import ImageDataset
@@ -91,8 +92,8 @@ def train_srgan(learning_rate, num_epochs, batch_size, num_workers):
 
     fig, ax = plt.subplots(figsize=(10,6), dpi= 80)
 
-    for epoch in range(num_epochs):
-        for idx, (low_res, high_res) in enumerate(loader):
+    for epoch in tqdm(range(num_epochs)):
+        for idx, (low_res, high_res) in tqdm(enumerate(loader)):
 
             # Send images to device
             high_res = high_res.to(device)
@@ -102,7 +103,7 @@ def train_srgan(learning_rate, num_epochs, batch_size, num_workers):
             fake = gen(low_res)
 
             loss_disc_e = train_discriminator(disc, opt_disc, fake, high_res, bce)
-            loss_gen_e = train_generator(disc, opt_gen, fake, high_res, vgg_loss_fun, mse)
+            loss_gen_e = train_generator(disc, opt_gen, fake, high_res, vgg_loss_fun, mse, bce)
 
             # At the end of every epoch
             if idx == batch_size-1:
@@ -129,7 +130,7 @@ def train_srgan(learning_rate, num_epochs, batch_size, num_workers):
                     f"Epoch [{epoch}/{num_epochs} - "
                     f"Loss D: {loss_disc_e:.4f}, Loss G: {loss_gen_e:.4f}]"
                     )
-                fig.savefig(os.path.join(config['figures']['dir']/'loss_evol.png'))
+                fig.savefig(os.path.join(config['figures']['dir'],'loss_evol.png'))
 
         if config['models']['save']:
             save_checkpoint(gen, opt_gen, filename=config['models']['gen'])

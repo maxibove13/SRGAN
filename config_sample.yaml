@@ -1,3 +1,5 @@
+system: medusa16
+
 data:
   rootdir: data
   dataset: DIV2K

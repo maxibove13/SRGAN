@@ -4,5 +4,6 @@ jupyter
 matplotlib
 torch
 torchvision
+tqdm
 pyyaml
 scikit-learn

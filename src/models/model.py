@@ -9,14 +9,20 @@ __status__ = "Development"
 __date__ = "02/22"
 
 # Built-in modules
+import os
 # Third-party modules
 import torch
 from torch import nn, tanh
 from torchvision.models import vgg19
+import yaml
 # Local modules
 
 # Define device
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+# read yaml file
+with open('config.yaml') as file:
+    config = yaml.safe_load(file)
 
 class ConvBlock(nn.Module):
     # Conv -> BN (Batch Norm) -> Leaky/PReLu
@@ -129,7 +135,13 @@ class Discriminator(nn.Module):
 class VGGLoss(nn.Module):
     def __init__(self):
         super().__init__()
-        self.vgg = vgg19(pretrained=True).features[:36].eval().to(device)
+        if config['system'] == 'medusa16':
+            self.vgg = vgg19(pretrained=False)
+            pretrained_vgg = torch.load(os.path.join(config['models']['rootdir'], 'vgg19-dcbb9e9d.pth'))
+            self.vgg.load_state_dict(pretrained_vgg)
+            self.vgg = self.vgg.features[:36].eval().to(device)
+        else:
+            self.vgg = vgg19(pretrained=True).features[:36].eval().to(device)
         self.loss = nn.MSELoss()
 
         for param in self.vgg.parameters():
