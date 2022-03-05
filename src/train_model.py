@@ -19,9 +19,9 @@ import numpy as np
 import torch
 from torch import nn
 import torch.optim as optim
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, SubsetRandomSampler
 import yaml
-from tqdm import tqdm
+# from tqdm import tqdm
 
 # Local modules
 from data.data_utils import ImageDataset
@@ -38,13 +38,14 @@ batch_size = config['train']['batch_size']
 num_workers = config['train']['num_workers']
 
 def train_srgan(learning_rate, num_epochs, batch_size, num_workers):
+
     # Define device
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"Using device: {torch.cuda.get_device_name()}")
 
     # Import High Resolution images (dataset)
     print("Importing dataset...")
-    train_dataset = ImageDataset(root_dir=os.path.join(config['data']['rootdir'], config['data']['dataset'], 'HR'))
+    dataset = ImageDataset(root_dir=os.path.join(config['data']['rootdir'], config['data']['dataset'], 'HR'))
     print(f"{len(train_dataset)} training samples from {train_dataset.root_dir}")
 
     # Initialize models and send them to device
@@ -62,10 +63,6 @@ def train_srgan(learning_rate, num_epochs, batch_size, num_workers):
     opt_gen = optim.Adam(gen.parameters(), lr=learning_rate, betas=(0.9, 0.999))
     opt_disc = optim.Adam(disc.parameters(), lr=learning_rate, betas=(0.9, 0.999))
 
-    # Load data
-    print(f"Loading dataset with batch size of {batch_size} and {num_workers} workers")
-    loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=num_workers)
-
     # Load checkpoint
     if config['models']['load']:
         print(f"Loading pretrained model from {config['models']['rootdir']}")
@@ -81,61 +78,79 @@ def train_srgan(learning_rate, num_epochs, batch_size, num_workers):
             device
         )
 
-    # Training loop
-    print(f"SRGAN training: \n")
-    print(f" Total training samples: {len(train_dataset)}\n Number of epochs: {num_epochs}\n Mini batch size: {batch_size}\n Number of batches: {len(loader)}\n Learning rate: {learning_rate}\n")
+    kfold = KFold(n_splits=config['validation']['n_splits'], shuffle=True)
 
-    loss_disc = []
-    loss_gen = []
+    # Loop through differnet folds
+    for fold, (train_idx, test_idx) in enumerate(kfold.split(dataset)):
+ 
 
-    # Start the stopwatch
-    # t0 = process_time()
+        train_subsampler = SubsetRandomSampler(train_idx)
+        test_subsampler = SubsetRandomSampler(test_idx)
 
-    fig, ax = plt.subplots(figsize=(10,6), dpi= 80)
+        
+        # Load data
+        print(f"Loading dataset with batch size of {batch_size} and {num_workers} workers")
+        
+        trainloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=num_workers)
 
-    for epoch in tqdm(range(num_epochs)):
-        for idx, (low_res, high_res) in enumerate(loader):
+        # Training loop
+        print(f"SRGAN training: \n")
+        print(f" Total training samples: {len(train_dataset)}\n Number of epochs: {num_epochs}\n Mini batch size: {batch_size}\n Number of batches: {len(loader)}\n Learning rate: {learning_rate}\n")
 
-            # Send images to device
-            high_res = high_res.to(device)
-            low_res = low_res.to(device)
+        loss_disc = []
+        loss_gen = []
 
-            # Generate fake (high_res) image from low_res
-            fake = gen(low_res)
+        # Start the stopwatch
+        # t0 = process_time()
 
-            loss_disc_e = train_discriminator(disc, opt_disc, fake, high_res, bce)
-            loss_gen_e = train_generator(disc, opt_gen, fake, high_res, vgg_loss_fun, mse, bce)
+        fig, ax = plt.subplots(figsize=(10,6), dpi= 80)
 
-            # At the end of every epoch
-            if idx == batch_size-1:
+        for epoch in range(num_epochs):
+            for idx, (low_res, high_res) in enumerate(loader):
 
-                # Append current epoch loss to list of losses
-                loss_disc.append(float(loss_disc_e.detach().cpu()))
-                loss_gen.append(float(loss_gen_e.detach().cpu()))
+                # Send images to device
+                high_res = high_res.to(device)
+                low_res = low_res.to(device)
 
-                # Plot loss
-                x = np.arange(0, epoch+1)
-                ax.plot(x, loss_disc, label='Discriminator loss', marker='o', color='b')
-                ax.plot(x, loss_gen, label='Generator loss', marker='o', color='r')
-                ax.set_title('Evolution of losses through epochs')
-                ax.set(xlabel='epochs')
-                ax.set(ylabel='loss')
-                if epoch == 0:
-                    ax.legend(loc='upper right')
-                    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-                # Display current figure
-                ax.grid()
-                
-                # Print progress every epoch
-                print( 
-                    f"Epoch [{epoch}/{num_epochs} - "
-                    f"Loss D: {loss_disc_e:.4f}, Loss G: {loss_gen_e:.4f}]"
-                    )
-                fig.savefig(os.path.join(config['figures']['dir'],'loss_evol.png'))
+                # Generate fake (high_res) image from low_res
+                fake = gen(low_res)
 
-        if config['models']['save']:
-            save_checkpoint(gen, opt_gen, filename=config['models']['gen'])
-            save_checkpoint(disc, opt_disc, filename=config['models']['disc'])
+                loss_disc_e = train_discriminator(disc, opt_disc, fake, high_res, bce)
+                loss_gen_e = train_generator(disc, opt_gen, fake, high_res, vgg_loss_fun, mse, bce)
+
+                # At the end of every epoch
+                if idx == batch_size-1:
+
+                    # Append current epoch loss to list of losses
+                    loss_disc.append(float(loss_disc_e.detach().cpu()))
+                    loss_gen.append(float(loss_gen_e.detach().cpu()))
+
+                    # Plot loss
+                    x = np.arange(0, epoch+1)
+                    ax.plot(x, loss_disc, label='Discriminator loss', marker='o', color='b')
+                    ax.plot(x, loss_gen, label='Generator loss', marker='o', color='r')
+                    ax.set_title('Evolution of losses through epochs')
+                    ax.set(xlabel='epochs')
+                    ax.set(ylabel='loss')
+                    if epoch == 0:
+                        ax.legend(loc='upper right')
+                        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+                    # Display current figure
+                    ax.grid()
+                    
+                    # Print progress every epoch
+                    print( 
+                        f"Epoch [{epoch}/{num_epochs} - "
+                        f"Loss D: {loss_disc_e:.4f}, Loss G: {loss_gen_e:.4f}]"
+                        )
+                    ax.grid()
+                    plt.grid()
+                    fig.savefig(os.path.join(config['figures']['dir'],'loss_evol.png'))
+
+            if config['models']['save']:
+                save_checkpoint(gen, opt_gen, filename=config['models']['gen'])
+                save_checkpoint(disc, opt_disc, filename=config['models']['disc'])
+
 
 if __name__ == "__main__":
     train_srgan(learning_rate, num_epochs, batch_size, num_workers)
