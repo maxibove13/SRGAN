@@ -48,7 +48,7 @@ def train_srgan(learning_rate, num_epochs, batch_size, num_workers):
     # Import High Resolution images (dataset)
     print("Importing dataset...")
     dataset = ImageDataset(root_dir=os.path.join(config['data']['rootdir'], config['data']['dataset'], 'HR'))
-    print(f"{len(train_dataset)} training samples from {train_dataset.root_dir}")
+    print(f"{len(dataset)} training samples from {dataset.root_dir}")
 
     # Initialize models and send them to device
     print('Initializing Generator and Discriminator...')
@@ -84,8 +84,8 @@ def train_srgan(learning_rate, num_epochs, batch_size, num_workers):
     kfold = KFold(n_splits=n_splits, shuffle=True)
 
     # Loop through different folds
-    psnr = np.zeros((len(dataset)/n_splits, n_splits))
-    ssim = np.zeros((len(dataset)/n_splits, n_splits))
+    psnr = np.zeros((len(dataset)//n_splits, n_splits))
+    ssim = np.zeros((len(dataset)//n_splits, n_splits))
     for fold, (train_idx, test_idx) in enumerate(kfold.split(dataset)):
  
         train_subsampler = SubsetRandomSampler(train_idx)
@@ -94,8 +94,8 @@ def train_srgan(learning_rate, num_epochs, batch_size, num_workers):
         # Load data
         print(f"Loading training dataset with batch size of {batch_size} and {num_workers} workers ")
         
-        trainloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=num_workers, sampler=train_subsampler)
-        testloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=num_workers, sampler=test_subsampler)
+        trainloader = DataLoader(dataset, batch_size=batch_size, pin_memory=True, num_workers=num_workers, sampler=train_subsampler)
+        testloader = DataLoader(dataset, batch_size=batch_size, pin_memory=True, num_workers=num_workers, sampler=test_subsampler)
 
         # Training loop
         print(f"SRGAN training: \n")
@@ -166,6 +166,10 @@ def train_srgan(learning_rate, num_epochs, batch_size, num_workers):
                 psnr[idx, fold] = peak_signal_noise_ratio(high_res, super_res)
                 # Calculate SSIM
                 ssim[idx, fold] = structural_similarity(high_res, super_res)
+        # Print averaged PSNR and SSIM
+        print(f"Average PSNR of fold {fold}/{n_splits}: {np.mean(psnr[:, fold])}")
+        print(f"Average SSIM of fold {fold}/{n_splits}: {np.mean(ssim[:, fold])}")
+        gen.train()
 
 
 if __name__ == "__main__":
