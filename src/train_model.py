@@ -16,6 +16,8 @@ import os
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 import numpy as np
+from sklearn.model_selection import KFold
+from skimage.metrics import peak_signal_noise_ratio, structural_similarity
 import torch
 from torch import nn
 import torch.optim as optim
@@ -78,35 +80,34 @@ def train_srgan(learning_rate, num_epochs, batch_size, num_workers):
             device
         )
 
-    kfold = KFold(n_splits=config['validation']['n_splits'], shuffle=True)
+    n_splits = config['validation']['n_splits']
+    kfold = KFold(n_splits=n_splits, shuffle=True)
 
-    # Loop through differnet folds
+    # Loop through different folds
+    psnr = np.zeros((len(dataset)/n_splits, n_splits))
+    ssim = np.zeros((len(dataset)/n_splits, n_splits))
     for fold, (train_idx, test_idx) in enumerate(kfold.split(dataset)):
  
-
         train_subsampler = SubsetRandomSampler(train_idx)
         test_subsampler = SubsetRandomSampler(test_idx)
-
         
         # Load data
-        print(f"Loading dataset with batch size of {batch_size} and {num_workers} workers")
+        print(f"Loading training dataset with batch size of {batch_size} and {num_workers} workers ")
         
-        trainloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=num_workers)
+        trainloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=num_workers, sampler=train_subsampler)
+        testloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=num_workers, sampler=test_subsampler)
 
         # Training loop
         print(f"SRGAN training: \n")
-        print(f" Total training samples: {len(train_dataset)}\n Number of epochs: {num_epochs}\n Mini batch size: {batch_size}\n Number of batches: {len(loader)}\n Learning rate: {learning_rate}\n")
+        print(f" Total training samples: {len(train_subsampler)}\n Number of epochs: {num_epochs}\n Mini batch size: {batch_size}\n Number of batches: {len(trainloader)}\n Learning rate: {learning_rate}\n")
 
         loss_disc = []
         loss_gen = []
 
-        # Start the stopwatch
-        # t0 = process_time()
-
         fig, ax = plt.subplots(figsize=(10,6), dpi= 80)
 
         for epoch in range(num_epochs):
-            for idx, (low_res, high_res) in enumerate(loader):
+            for idx, (low_res, high_res) in enumerate(trainloader):
 
                 # Send images to device
                 high_res = high_res.to(device)
@@ -150,6 +151,21 @@ def train_srgan(learning_rate, num_epochs, batch_size, num_workers):
             if config['models']['save']:
                 save_checkpoint(gen, opt_gen, filename=config['models']['gen'])
                 save_checkpoint(disc, opt_disc, filename=config['models']['disc'])
+
+        print(f"Training process of fold {fold}/{n_splits} has finished.")
+
+        # Evaluation of this fold
+        gen.eval()
+        with torch.no_grad():
+            # Iterate over the test data and generate super resolution images from downscale of HR test images
+            psnr = np.zeros(len(testloader))
+            for idx, (low_res, high_res) in enumerate(testloader):
+                # Generate super resolution image from low_res
+                super_res = gen(low_res)
+                # Calculate PSNR
+                psnr[idx, fold] = peak_signal_noise_ratio(high_res, super_res)
+                # Calculate SSIM
+                ssim[idx, fold] = structural_similarity(high_res, super_res)
 
 
 if __name__ == "__main__":
