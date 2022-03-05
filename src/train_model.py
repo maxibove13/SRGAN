@@ -99,7 +99,7 @@ def train_srgan(learning_rate, num_epochs, batch_size, num_workers):
 
         # Training loop
         print(f"SRGAN training: \n")
-        print(f" Total training samples: {len(train_subsampler)}\n Number of epochs: {num_epochs}\n Mini batch size: {batch_size}\n Number of batches: {len(trainloader)}\n Learning rate: {learning_rate}\n")
+        print(f"k-fold: {fold}/{n_splits} \nTraining samples on this fold: {len(train_subsampler)}\n Number of epochs: {num_epochs}\n Mini batch size: {batch_size}\n Number of batches: {len(trainloader)}\n Learning rate: {learning_rate}\n")
 
         loss_disc = []
         loss_gen = []
@@ -161,7 +161,7 @@ def train_srgan(learning_rate, num_epochs, batch_size, num_workers):
             psnr = np.zeros(len(testloader))
             for idx, (low_res, high_res) in enumerate(testloader):
                 # Generate super resolution image from low_res
-                super_res = gen(low_res)
+                super_res = gen(low_res.to(device))
                 # Calculate PSNR
                 psnr[idx, fold] = peak_signal_noise_ratio(high_res, super_res)
                 # Calculate SSIM
