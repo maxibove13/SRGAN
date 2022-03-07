@@ -47,8 +47,10 @@ def train_srgan(learning_rate, num_epochs, batch_size, num_workers):
 
     # Import High Resolution images (dataset)
     print("Importing dataset...")
-    dataset = ImageDataset(root_dir=os.path.join(config['data']['rootdir'], config['data']['dataset'], 'HR'))
+    dataset = ImageDataset(root_dir=os.path.join(config['data']['rootdir'], config['data']['dataset'], 'train'))
     print(f"{len(dataset)} training samples from {dataset.root_dir}")
+
+
 
     # Initialize models and send them to device
     print('Initializing Generator and Discriminator...')
@@ -80,27 +82,48 @@ def train_srgan(learning_rate, num_epochs, batch_size, num_workers):
             device
         )
 
-    n_splits = config['validation']['n_splits']
-    kfold = KFold(n_splits=n_splits, shuffle=True)
+    kfold = config['validation']['kfold']
+    if kfold:
+        n_splits = config['validation']['n_splits']
+        kfold = KFold(n_splits=n_splits, shuffle=True)
+        psnr = np.zeros((n_splits, len(dataset)//n_splits//batch_size + 1, batch_size))
+        ssim = np.zeros((n_splits, len(dataset)//n_splits//batch_size + 1, batch_size))
 
-    # Loop through different folds
-    psnr = np.zeros((len(dataset)//n_splits, n_splits))
-    ssim = np.zeros((len(dataset)//n_splits, n_splits))
-    for fold, (train_idx, test_idx) in enumerate(kfold.split(dataset)):
- 
-        train_subsampler = SubsetRandomSampler(train_idx)
-        test_subsampler = SubsetRandomSampler(test_idx)
-        
-        # Load data
-        print(f"Loading training dataset with batch size of {batch_size} and {num_workers} workers ")
-        
-        trainloader = DataLoader(dataset, batch_size=batch_size, pin_memory=True, num_workers=num_workers, sampler=train_subsampler)
-        testloader = DataLoader(dataset, batch_size=batch_size, pin_memory=True, num_workers=num_workers, sampler=test_subsampler)
+    # Iterate over kfolds only if kfold is on.
+    for fold, (train_idx, test_idx) in enumerate(kfold.split(dataset)) if kfold else enumerate([(0,0)]):
+
+        if kfold:
+            train_subsampler = SubsetRandomSampler(train_idx)
+            test_subsampler = SubsetRandomSampler(test_idx)
+            # Load data
+            print(f"\nSpliting and loading datasets [{fold+1}/{n_splits}]...")
+            trainloader = DataLoader(dataset, batch_size=batch_size, pin_memory=True, num_workers=num_workers, sampler=train_subsampler)
+            testloader = DataLoader(dataset, batch_size=batch_size, pin_memory=True, num_workers=num_workers, sampler=test_subsampler)
+        else:
+            print(f"\nLoading dataset...")
+            trainloader = DataLoader(dataset, batch_size=batch_size, pin_memory=True, num_workers=num_workers)
+
 
         # Training loop
-        print(f"SRGAN training: \n")
-        print(f"k-fold: {fold}/{n_splits} \nTraining samples on this fold: {len(train_subsampler)}\n Number of epochs: {num_epochs}\n Mini batch size: {batch_size}\n Number of batches: {len(trainloader)}\n Learning rate: {learning_rate}\n")
-
+        print(f"Starting training: \n")
+        if kfold:
+            print(
+                f"  k-fold: {fold+1}/{n_splits}\n"
+                f"  Training samples on this fold: {len(train_subsampler)}\n"
+                f"  Testing samples on this fold: {len(test_subsampler)}\n"
+                f"  Number of epochs: {num_epochs}\n"
+                f"  Mini batch size: {batch_size}\n"
+                f"  Number of batches: {len(trainloader)}\n"
+                f"  Learning rate: {learning_rate})\n"
+            )
+        else:
+            print(
+                f"  Training samples: {len(dataset)}\n"
+                f"  Number of epochs: {num_epochs}\n"
+                f"  Mini batch size: {batch_size}\n"
+                f"  Number of batches: {len(trainloader)}\n"
+                f"  Learning rate: {learning_rate})\n"
+            )
         loss_disc = []
         loss_gen = []
 
@@ -138,39 +161,55 @@ def train_srgan(learning_rate, num_epochs, batch_size, num_workers):
                         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
                     # Display current figure
                     ax.grid()
-                    
                     # Print progress every epoch
-                    print( 
-                        f"Epoch [{epoch}/{num_epochs} - "
+                    print(
+                        f"Epoch [{epoch+1}/{num_epochs} - "
                         f"Loss D: {loss_disc_e:.4f}, Loss G: {loss_gen_e:.4f}]"
                         )
                     ax.grid()
                     plt.grid()
                     fig.savefig(os.path.join(config['figures']['dir'],'loss_evol.png'))
 
-            if config['models']['save']:
-                save_checkpoint(gen, opt_gen, filename=config['models']['gen'])
-                save_checkpoint(disc, opt_disc, filename=config['models']['disc'])
-
-        print(f"Training process of fold {fold}/{n_splits} has finished.")
+        # Save model at the end of all epochs
+        if config['models']['save']:
+            print("Saving model...")
+            save_checkpoint(gen, opt_gen, filename=os.path.join(config['models']['rootdir'], config['models']['gen']))
+            save_checkpoint(disc, opt_disc, filename=os.path.join(config['models']['rootdir'], config['models']['disc']))
 
         # Evaluation of this fold
-        gen.eval()
-        with torch.no_grad():
-            # Iterate over the test data and generate super resolution images from downscale of HR test images
-            psnr = np.zeros(len(testloader))
-            for idx, (low_res, high_res) in enumerate(testloader):
-                # Generate super resolution image from low_res
-                super_res = gen(low_res.to(device))
-                # Calculate PSNR
-                psnr[idx, fold] = peak_signal_noise_ratio(high_res, super_res)
-                # Calculate SSIM
-                ssim[idx, fold] = structural_similarity(high_res, super_res)
-        # Print averaged PSNR and SSIM
-        print(f"Average PSNR of fold {fold}/{n_splits}: {np.mean(psnr[:, fold])}")
-        print(f"Average SSIM of fold {fold}/{n_splits}: {np.mean(ssim[:, fold])}")
-        gen.train()
+        if kfold:
+            print("\nEvaluation of testing dataset:")
+            gen.eval()
+            with torch.no_grad():
+                # Iterate over the batches of test data and generate super resolution images from downscale of HR test images
+                for idx, (low_res, high_res) in enumerate(testloader):
+                    # Generate super resolution image from low_res
+                    super_res = gen(low_res.to(device))
+            # Transfer images to cpu and convert them to arrays
+                    super_res = np.asarray(super_res.cpu())
+                    high_res = np.asarray(high_res.cpu())
+                    # Calculate PSNR
+                    # Iterate over all images in this batch 
+                    for i, hr_im in enumerate(high_res):
+                        psnr[fold, idx, i] = peak_signal_noise_ratio(hr_im, super_res[i])
+                        # Calculate SSIM
+                        ssim[fold, idx, i] = structural_similarity(hr_im, super_res[i], channel_axis=0)
+
+            # Print averaged PSNR and SSIM
+            psnr[fold, :, :][psnr[fold, :, :] == 0] = np.nan
+            ssim[fold, :, :][ssim[fold, :, :] == 0] = np.nan
+            print(f"Average PSNR of fold {fold+1}/{n_splits}: {np.nanmean(psnr[fold, :, :]):.3f}")
+            print(f"Average SSIM of fold {fold+1}/{n_splits}: {np.nanmean(ssim[fold, :, :]):.3f}")
+            print(f"----------------------------------------")
+            gen.train()
+
+    if kfold:
+        print(f"Average PSNR of all folds: {np.nanmean(psnr):.2f}")
+        print(f"Average SSIM of all folds: {np.nanmean(ssim):.2f}")
+        np.save("psnr.npy", psnr)
+        np.save("ssim.npy", ssim)
 
 
 if __name__ == "__main__":
     train_srgan(learning_rate, num_epochs, batch_size, num_workers)
+    print("Finished training.")

@@ -12,6 +12,7 @@ test.ipynb
 
 # Ignore pycache files
 *.pyc
+*.swp
 
 # Ignore any venv dir
 .venv*
@@ -19,6 +20,9 @@ test.ipynb
 # Ignore figures content
 figures/*
 
+# Ignore saved arrays and logs
+*.npy
+*.log
 
 # Except .gitkeep in order for the folders to be commited
 !.gitkeep
