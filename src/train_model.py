@@ -41,6 +41,9 @@ num_workers = config['train']['num_workers']
 
 def train_srgan(learning_rate, num_epochs, batch_size, num_workers):
 
+    # Print test comparison figure between SR and HR.
+    test_sr = True
+
     # Define device
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"Using device: {torch.cuda.get_device_name()}")
@@ -151,7 +154,7 @@ def train_srgan(learning_rate, num_epochs, batch_size, num_workers):
 
                     # Plot loss
                     x = np.arange(0, epoch+1)
-                    ax.plot(x, loss_disc, label='Discriminator loss', marker='o', color='b')
+                    # ax.plot(x, loss_disc, label='Discriminator loss', marker='o', color='b')
                     ax.plot(x, loss_gen, label='Generator loss', marker='o', color='r')
                     ax.set_title('Evolution of losses through epochs')
                     ax.set(xlabel='epochs')
@@ -159,7 +162,6 @@ def train_srgan(learning_rate, num_epochs, batch_size, num_workers):
                     if epoch == 0:
                         ax.legend(loc='upper right')
                         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-                    # Display current figure
                     ax.grid()
                     # Print progress every epoch
                     print(
@@ -188,9 +190,20 @@ def train_srgan(learning_rate, num_epochs, batch_size, num_workers):
             # Transfer images to cpu and convert them to arrays
                     super_res = np.asarray(super_res.cpu())
                     high_res = np.asarray(high_res.cpu())
-                    # Calculate PSNR
+
+                    if idx == 0 and test_sr:
+                        sr_test = super_res[idx]
+                        hr_test = high_res[idx]
+                        fig, ax = plt.subplots(1,2)
+                        fig.suptitle(f'PSNR: {peak_signal_noise_ratio(hr_test, sr_test)} | SSIM: {structural_similarity(hr_test, sr_test, channel_axis=0)}')
+                        ax[0].imshow(np.moveaxis(sr_test, 0, 2))
+                        ax[0].axis('off')
+                        ax[1].imshow(np.moveaxis(hr_test, 0, 2))
+                        ax[1].axis('off')
+                        plt.savefig(os.path.join('figures', 'lsh_train'),  bbox_inches='tight')
                     # Iterate over all images in this batch 
                     for i, hr_im in enumerate(high_res):
+                        # Calculate PSNR
                         psnr[fold, idx, i] = peak_signal_noise_ratio(hr_im, super_res[i])
                         # Calculate SSIM
                         ssim[fold, idx, i] = structural_similarity(hr_im, super_res[i], channel_axis=0)

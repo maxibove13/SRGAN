@@ -10,20 +10,20 @@ Copy `config_sample.yaml` file and rename it `config.yaml` in order to modify an
 
 ## Train the network
 
-Run cells in `srgan.ipynb`
+Run  `train_model.py` script
 
-## Validate the network
-## Test the network
-
-In order to use the network to generate super resolution images from low resolution ones you can load a checkpoint with the last training given the training dataset and evaluate the Generator:
-
-Download this two [folders](https://drive.google.com/drive/folders/11Q37jVKt41J3y72ifBImR1suknSubcVN?usp=sharing) containing the checkpoints inside `checkpoints/` repository directory.
-
-```bash
-python test_gen.py <train_data>
+```
+python3 ./src/train_model.py
 ```
 
-Where `train_data` is the dataset that the SRGAN was trained with. Two options available: `DIV2K` or `UxLES`
+## Test the network
+
+Run  `train_model.py` script
+
+```
+python3 ./src/train_model.py
+```
+
 
 ## Google Colab
 
