@@ -1,29 +1,29 @@
-system: medusa16
-
 data:
   rootdir: data
-  dataset: DIV2K
-  high_res: 96
-  upscale_factor: 4 
+  dataset: UxLES
+  high_res: 64
+  upscale_factor: 4
   img_channels: 3
 
 # Pretrained models
 models:
-  load: True
+  dwnld_vgg: False
+  load: False
   save: False
   rootdir: models
-  gen: gen.div2k.tar
-  disc: disc.div2k.tar
+  gen: gen.uxles.pth
+  disc: disc.uxles.pth
 
 # Training hyperparameters
 train:
   learning_rate: 1.0e-4
-  num_epochs: 1
+  num_epochs: 200
   batch_size: 16
-  num_workers: 2 # number of processes that gen batches in parallel
+  num_workers: 4 # number of processes that gen batches in parallel
 
 validation:
-  n_splits: 5
+  kfold: True # If false Do not cross validate. Train with all training data.
+  n_splits: 5 
 
 figures:
   dir: figures

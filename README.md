@@ -6,17 +6,65 @@ arxiv.org/abs/1609.04802
 
 ## Instructions
 
-Copy `config_sample.yaml` file and rename it `config.yaml` in order to modify any configuration parameter you want without modifying the version control.
+1. Copy `config_sample.yaml` file and rename it `config.yaml` in order to modify any configuration parameter you want without modifying the version control.
+
+2. Download either `DIV2K` or `UxLES` dataset and extract them in `data/`
+
+   - [DIV2K dataset](https://drive.google.com/file/d/1OHo_hmFTqAkgpjo6sNf_1iuWeDsDad0T/view?usp=sharing)
+   - [UxLES dataset](https://drive.google.com/file/d/1Khhfgz9_Di7S6PZFs5tmK_qRT-Y-jbNH/view?usp=sharing)
+
+3. Optionally, download the pretrained Generators and Discriminators:
+
+   - [DIV2K Generator](https://drive.google.com/file/d/1xK8VOXJ--SCAvlY32SzUph8S1A2bxG08/view?usp=sharing)
+   - [DIV2K Discriminator](https://drive.google.com/file/d/1hr1e6E0GCy7IIkAUweChzPPY07s-p6Rv/view?usp=sharing)
+
+   - [UxLES Generator](https://drive.google.com/file/d/1v6TqUhTkZ8WYfsr4ZNb8GF5eT_l1Dy3w/view?usp=sharing)
+   - [UxLES Discriminator](https://drive.google.com/file/d/1NI3pDJ4VxtegQsFYQCGQaJVWMsGYdjWq/view?usp=sharing)
+
+Now you should be ready to use the repository.
+
+## config.yaml
+
+This is the configuration file, it is divided in:
+
+### data
+
+Here you should specify the root directory of the `data` samples, the `dataset` (either `DIV2K`, `UxLES` or another of your choice), the `high_res` size, that is the crop of high resolution images that are going to feed the training network (recomended 96 in `DIV2K` and 64 in `UxLES`), the `upscale_factor` (4 by default) and the `img_channels` that should be 3 (RGB) in most cases.
+
+### models
+
+You can choose to download the pretrained VGG network that is used for one of the Generator loss terms from `torch` if you set `dwnld_vgg` to False, or set it to True and download it previously from here:
+[Pretrained VGG19](https://drive.google.com/file/d/1xK8VOXJ--SCAvlY32SzUph8S1A2bxG08/view?usp=sharing)
+
+You should also specify if you want to load a pretrained Generator and Discriminator during training and if to save it at the end of each epoch. Also the filename and directory of the model to load or save must be stated.
+
+### train
+
+Here the usual hyperparameters are specified: `learning_rate`, `num_epochs`, `batch_size` and `num_workers`.
+
+### validation
+
+If to apply kfold cross validation during training or not, and how many splits.
+
+### figures
+
+Just state the directory where you want to save the figures that result from training or testing.
 
 ## Train the network
 
-Run  `train_model.py` script
+Setup the training session and the hyperparameters in `config.yaml`. There, you should check that the data root directory and dataset are the ones you want to train with. If you are training with `UxLES` check that `high_res` is 64 or less.
+
+Run  `train_model.py` script or `run.sh &` to run the training in the background and dump the prints in a `train.log` file.
 
 ```
 python3 ./src/train_model.py
 ```
 
 ## Test the network
+
+In order to test the network on the testing dataset, make sure you extracted some dataset into `data` directory.
+
+The script will lower the resolution of all testing images and evaluate the Generator on them. It will also generate a comparison figure, and create a PSNR and SSIM histogram.
 
 Run  `train_model.py` script
 
@@ -26,6 +74,8 @@ python3 ./src/train_model.py
 
 
 ## Google Colab
+
+If you want to run this network in `google colab`:
 
 After you clone the repository in a `Google Drive` folder, mount it to your colab session in order to use the repository features.
 

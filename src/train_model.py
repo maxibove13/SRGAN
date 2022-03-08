@@ -172,7 +172,7 @@ def train_srgan(learning_rate, num_epochs, batch_size, num_workers):
                     plt.grid()
                     fig.savefig(os.path.join(config['figures']['dir'],'loss_evol.png'))
 
-        # Save model at the end of all epochs
+        # Save model at the end of each epochs
         if config['models']['save']:
             print("Saving model...")
             save_checkpoint(gen, opt_gen, filename=os.path.join(config['models']['rootdir'], config['models']['gen']))
