@@ -4,6 +4,9 @@ A naive implementation of a Super-Resolution GAN.
 Based on the work by Ledig et. al. 2017
 arxiv.org/abs/1609.04802
 
+![Example of SRGAN using DIV2K dataset](https://github.com/maxibove13/SRGAN/blob/main/figures/div2k_example.png?raw=true)
+![Example of SRGAN using UxLES dataset](https://github.com/maxibove13/SRGAN/blob/main/figures/uxles_example_example.png?raw=true)
+
 ## Instructions
 
 1. Copy `config_sample.yaml` file and rename it `config.yaml` in order to modify any configuration parameter you want without modifying the version control.

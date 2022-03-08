@@ -27,3 +27,5 @@ figures/*
 # Except .gitkeep in order for the folders to be commited
 !.gitkeep
 !src/data
+!figures/uxles_example.png
+!figures/div2k_example.png
