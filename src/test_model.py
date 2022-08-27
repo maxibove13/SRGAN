@@ -23,8 +23,8 @@ import torch.optim as optim
 import yaml
 
 # Local modules
-from data.data_utils import ImageDataset, test_transform
-from models.model import Generator, Discriminator, VGGLoss
+from data.data_utils import test_transform
+from models.model import Generator
 from utils import load_checkpoint
 from lower_res import lower_res
 
@@ -131,11 +131,11 @@ def test_srgan(learning_rate, factor):
 
     # Create histogram
     fig_h, axs_h = plt.subplots(1,2)
-    axs_h[0].hist(psnr, 10, density=True, facecolor='g', edgecolor='black')
+    axs_h[0].hist(psnr, 20, density=True, facecolor='C0', edgecolor='black')
     axs_h[0].set_xlabel('dB')
     axs_h[0].set_ylabel('Probability density')
     axs_h[0].set_title(f'PSNR histogram\n$\mu={np.mean(psnr):.2f}$, $\sigma={np.std(psnr):.2f}$')
-    axs_h[1].hist(ssim, 10, density=True, facecolor='g', edgecolor='black')
+    axs_h[1].hist(ssim, 20, density=True, facecolor='C1', edgecolor='black')
     axs_h[1].set_title(f'SSIM histogram\n$\mu={np.mean(ssim):.2f}$, $\sigma={np.std(ssim):.2f}$')
     fig_h.savefig(os.path.join('figures', f'histogram'),  bbox_inches='tight') 
 

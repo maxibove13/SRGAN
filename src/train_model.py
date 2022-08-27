@@ -127,10 +127,15 @@ def train_srgan(learning_rate, num_epochs, batch_size, num_workers):
                 f"  Number of batches: {len(trainloader)}\n"
                 f"  Learning rate: {learning_rate})\n"
             )
-        loss_disc = []
-        loss_gen = []
+        loss_gen = []; loss_disc_real = []; loss_disc_fake = []; loss_mse=[]; loss_vgg=[]; psnrs=[];ssims=[]
 
-        fig, ax = plt.subplots(figsize=(10,6), dpi= 80)
+        fig_advloss, ax_advloss = plt.subplots(dpi=300)
+        fig_other_losses, ax_other_losses = plt.subplots(dpi=300)
+        fig, ax = plt.subplots(1,2, dpi=300)
+        fig_metrics, axs_metrics = plt.subplots(dpi=300)
+        ax_advloss.set_xlim(0, num_epochs)
+        ax_other_losses.set_xlim(0, num_epochs)
+        axs_metrics.set_xlim(0, num_epochs)
 
         for epoch in range(num_epochs):
             for idx, (low_res, high_res) in enumerate(trainloader):
@@ -142,52 +147,110 @@ def train_srgan(learning_rate, num_epochs, batch_size, num_workers):
                 # Generate fake (high_res) image from low_res
                 fake = gen(low_res)
 
-                loss_disc_e = train_discriminator(disc, opt_disc, fake, high_res, bce)
-                loss_gen_e = train_generator(disc, opt_gen, fake, high_res, vgg_loss_fun, mse, bce)
+                loss_real, loss_fake = train_discriminator(disc, opt_disc, fake, high_res, bce)
+                adv_loss, vgg_loss, mse_loss = train_generator(disc, opt_gen, fake, high_res, vgg_loss_fun, mse, bce)
 
-                # At the end of every epoch
-                if idx == batch_size-1:
+                # Calculate PSNR and SSIM
+                psnr = 0; ssim = 0
+                for (hr, sr) in zip(high_res, fake):
+                    psnr += peak_signal_noise_ratio(hr.detach().cpu().numpy(), sr.detach().cpu().numpy())
+                    ssim += structural_similarity(hr.detach().cpu().numpy(), sr.detach().cpu().numpy(), channel_axis=0)
+                psnr /= high_res.shape[0]
+                ssim /= high_res.shape[0]
 
-                    # Append current epoch loss to list of losses
-                    loss_disc.append(float(loss_disc_e.detach().cpu()))
-                    loss_gen.append(float(loss_gen_e.detach().cpu()))
+            # Append current epoch loss to list of losses
+            loss_disc_real.append(float(loss_real.detach().cpu()))
+            loss_disc_fake.append(float(loss_fake.detach().cpu()))
+            loss_gen.append(float(adv_loss.detach().cpu())*1e3)
+            loss_mse.append(float(mse_loss.detach().cpu()))
+            loss_vgg.append(float(vgg_loss.detach().cpu())/0.006)
+            psnrs.append(psnr)
+            ssims.append(ssim)
 
-                    # Plot loss
-                    x = np.arange(0, epoch+1)
-                    # ax.plot(x, loss_disc, label='Discriminator loss', marker='o', color='b')
-                    ax.plot(x, loss_gen, label='Generator loss', marker='o', color='r')
-                    ax.set_title('Evolution of losses through epochs')
-                    ax.set(xlabel='epochs')
-                    ax.set(ylabel='loss')
-                    if epoch == 0:
-                        ax.legend(loc='upper right')
-                        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-                    ax.grid()
-                    # Print progress every epoch
-                    print(
-                        f"Epoch [{epoch+1}/{num_epochs} - "
-                        f"Loss D: {loss_disc_e:.4f}, Loss G: {loss_gen_e:.4f}]"
-                        )
-                    ax.grid()
-                    plt.grid()
-                    fig.savefig(os.path.join(config['figures']['dir'],'loss_evol.png'))
+            # Print progress every epoch
+            print(
+                f"Epoch [{epoch+1}/{num_epochs} - "
+                f"Loss D: {loss_real+loss_fake:.3f}, Loss G: {adv_loss+mse_loss+vgg_loss:.3f},"
+                f" Tra. PSNR: {psnr:.3f}, Tra. SSIM: {ssim:.3f}]"
+                )
 
-        # Save model at the end of each epochs
+            # Plot adversarial loss
+            x = np.arange(0, epoch+1)
+            ax_advloss.plot(x, loss_gen, label='Gen. loss', color='r')
+            ax_advloss.plot(x, loss_disc_real, label='Disc. loss (real)', color='k')
+            ax_advloss.plot(x, loss_disc_fake, label='Disc. loss (fake)', color='b')
+            ax_advloss.set_title('Generator and Discriminator losses vs. epoch')
+            ax_advloss.set(xlabel='epoch')
+            ax_advloss.set(ylabel='adversarial loss')
+            if epoch == 0:
+                ax_advloss.legend(loc='upper right')
+                ax_advloss.xaxis.set_major_locator(MaxNLocator(integer=True))
+            ax_advloss.grid(visible=True)
+            fig_advloss.savefig(os.path.join(config['figures']['dir'],'loss_evol.png'))
+
+            # Plot MSE and VGG loss
+                # ax_other_losses.xaxis.set_major_locator(MaxNLocator(integer=True))
+            if epoch == 0:
+                ax2 = ax_other_losses.twinx()
+            line_mse, = ax_other_losses.plot(x, loss_mse, label='MSE Gen. loss', color='r')
+            line_vgg, = ax2.plot(x, loss_vgg, label='VGG Gen. loss', color='r', ls='--')
+            ax_other_losses.set_title('MSE and VGG Generator losses vs. epoch')
+            ax_other_losses.set(xlabel='epoch')
+            ax_other_losses.set(ylabel='MSE loss')
+            ax2.set_ylabel('VGG loss', rotation=270, labelpad=14)
+            if epoch == 0:
+                ax_other_losses.legend(handles=[line_mse, line_vgg], loc='upper right')
+                ax_other_losses.xaxis.set_major_locator(MaxNLocator(integer=True))
+            # fig_other_losses.suptitle('MSE and VGG Generator losses vs. epoch')
+            # Print progress every epoch
+            ax_other_losses.grid(visible=True)
+            fig_other_losses.savefig(os.path.join(config['figures']['dir'],'loss_evol_mse_vgg.png'))
+
+            # Plot PSNR and SSIM 
+            if epoch == 0:
+                ax2_m = axs_metrics.twinx()
+            line_psnr, = axs_metrics.plot(x, psnrs, label='PSNR', color='C0')
+            line_ssim, = ax2_m.plot(x, ssims, label='SSIM', color='C1')
+            axs_metrics.set_title('PSNR and SSIM on training data vs. epoch')
+            axs_metrics.set(xlabel='epoch')
+            axs_metrics.set(ylabel='PSNR')
+            ax2_m.set_ylabel('SSIM', rotation=270, labelpad=14)
+            # print(line_psnr.get_label())
+            if epoch == 0:
+                axs_metrics.legend(handles=[line_psnr, line_ssim], loc='lower right')
+                axs_metrics.xaxis.set_major_locator(MaxNLocator(integer=True))
+                # axs_metrics.xaxis.set_major_locator(MaxNLocator(integer=True))
+            # Print progress every epoch
+            axs_metrics.grid(visible=True)
+            fig_metrics.savefig(os.path.join(config['figures']['dir'],'metrics_tra.png'))
+
+            # Evaluate model
+            sr_sample = fake[0].detach().cpu().numpy()
+            hr_sample = high_res[0].detach().cpu().numpy()
+            fig.suptitle(f'PSNR: {peak_signal_noise_ratio(hr_sample, sr_sample):.2f} | SSIM: {structural_similarity(hr_sample, sr_sample, channel_axis=0):.2f}', y=0.9)
+            ax[0].imshow((np.moveaxis(sr_sample, 0, 2)*255).astype(np.uint8))
+            ax[0].axis('off')
+            ax[0].set_title('Super Resolution Image')
+            ax[1].imshow((np.moveaxis(hr_sample, 0, 2)*255).astype(np.uint8))
+            ax[1].axis('off')
+            ax[1].set_title('High Resolution Image')
+            fig.savefig(os.path.join('figures', 'lsh_train'),  bbox_inches='tight')
+
+        # Save model at the end of all epochs
         if config['models']['save']:
-            print("Saving model...")
             save_checkpoint(gen, opt_gen, filename=os.path.join(config['models']['rootdir'], config['models']['gen']))
             save_checkpoint(disc, opt_disc, filename=os.path.join(config['models']['rootdir'], config['models']['disc']))
 
         # Evaluation of this fold
         if kfold:
-            print("\nEvaluation of testing dataset:")
+            print("\nEvaluation of cross validation dataset:")
             gen.eval()
             with torch.no_grad():
                 # Iterate over the batches of test data and generate super resolution images from downscale of HR test images
                 for idx, (low_res, high_res) in enumerate(testloader):
                     # Generate super resolution image from low_res
                     super_res = gen(low_res.to(device))
-            # Transfer images to cpu and convert them to arrays
+                    # Transfer images to cpu and convert them to arrays
                     super_res = np.asarray(super_res.cpu())
                     high_res = np.asarray(high_res.cpu())
 
@@ -195,11 +258,13 @@ def train_srgan(learning_rate, num_epochs, batch_size, num_workers):
                         sr_test = super_res[idx]
                         hr_test = high_res[idx]
                         fig, ax = plt.subplots(1,2)
-                        fig.suptitle(f'PSNR: {peak_signal_noise_ratio(hr_test, sr_test)} | SSIM: {structural_similarity(hr_test, sr_test, channel_axis=0)}')
+                        fig.suptitle(f'PSNR: {peak_signal_noise_ratio(hr_test, sr_test):.2f} | SSIM: {structural_similarity(hr_test, sr_test, channel_axis=0):.2f}')
                         ax[0].imshow(np.moveaxis(sr_test, 0, 2))
                         ax[0].axis('off')
+                        ax[0].set_title('Super Resolution Image')
                         ax[1].imshow(np.moveaxis(hr_test, 0, 2))
                         ax[1].axis('off')
+                        ax[1].set_title('High Resolution Image')
                         plt.savefig(os.path.join('figures', 'lsh_train'),  bbox_inches='tight')
                     # Iterate over all images in this batch 
                     for i, hr_im in enumerate(high_res):

@@ -66,12 +66,12 @@ python3 ./src/train_model.py
 
 In order to test the network on the testing dataset, make sure you extracted some dataset into `data` directory.
 
-The script will lower the resolution of all testing images and evaluate the Generator on them. It will also generate a comparison figure, and create a PSNR and SSIM histogram.
+The script will lower the resolution of all testing images and evaluate the Generator on them. It will also generate a comparison figure, and create PSNR and SSIM histograms.
 
 Run  `train_model.py` script
 
 ```
-python3 ./src/train_model.py
+python3 ./src/test_model.py
 ```
 
 

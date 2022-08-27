@@ -1,9 +1,10 @@
 albumentations
+astroid
 ipykernel
 jupyter
 matplotlib
-torch
-torchvision
+# torch
+# torchvision
 tqdm
 pyyaml
 scikit-learn

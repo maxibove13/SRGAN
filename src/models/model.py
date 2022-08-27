@@ -135,13 +135,13 @@ class Discriminator(nn.Module):
 class VGGLoss(nn.Module):
     def __init__(self):
         super().__init__()
-        if not config['dwnld_vgg']:
+        if not config['models']['dwnld_vgg']:
             self.vgg = vgg19(pretrained=False)
             pretrained_vgg = torch.load(os.path.join(config['models']['rootdir'], 'vgg19-dcbb9e9d.pth'))
             self.vgg.load_state_dict(pretrained_vgg)
             self.vgg = self.vgg.features[:36].eval().to(device)
         else:
-            self.vgg = vgg19(pretrained=True).features[:36].eval().to(device)
+            self.vgg = vgg19(weights='IMAGENET1K_V1').features[:36].eval().to(device)
         self.loss = nn.MSELoss()
 
         for param in self.vgg.parameters():
@@ -149,7 +149,7 @@ class VGGLoss(nn.Module):
 
     def forward(self, input, target):
         vgg_input_features = self.vgg(input)
-        vgg_target_features = self.vgg(input)
+        vgg_target_features = self.vgg(target)
         return self.loss(vgg_input_features, vgg_target_features)
 
 ### Train Discriminator: max log(D(x)) + log(1 - D(G(z)))
@@ -166,14 +166,14 @@ def train_discriminator(D, opt, fake, high_res, bce):
     pred_fake = D(fake.detach())
     loss_fake = bce(pred_fake, torch.zeros_like(pred_fake))
 
-    loss = loss_real + loss_fake
+    loss = (loss_real + loss_fake)
 
     # Backward pass
     loss.backward()
     # Update weights
     opt.step()
 
-    return loss
+    return loss_real, loss_fake
 
 ### Train Generator: min log(1 - D(G(z))) <-> max log(D(G(z))
 def train_generator(D, opt, fake, high_res, vgg_loss, mse, bce):
@@ -194,4 +194,4 @@ def train_generator(D, opt, fake, high_res, vgg_loss, mse, bce):
     # Update weights
     opt.step()
 
-    return loss
+    return adv_loss, vgg_loss, mse_loss

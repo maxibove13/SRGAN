@@ -4,6 +4,9 @@ config.yaml
 # Ignore dataset
 data
 
+# ignore samples
+samples/*
+
 # Ignore models
 models/*
 
