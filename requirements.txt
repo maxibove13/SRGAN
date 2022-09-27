@@ -5,6 +5,7 @@ jupyter
 matplotlib
 # torch
 # torchvision
+split-folders
 tqdm
 pyyaml
 scikit-learn

@@ -13,7 +13,7 @@ import os
 # Third-party modules
 import torch
 from torch import nn, tanh
-from torchvision.models import vgg19
+from torchvision.models import vgg19, VGG19_Weights
 import yaml
 # Local modules
 
@@ -141,7 +141,7 @@ class VGGLoss(nn.Module):
             self.vgg.load_state_dict(pretrained_vgg)
             self.vgg = self.vgg.features[:36].eval().to(device)
         else:
-            self.vgg = vgg19(weights='IMAGENET1K_V1').features[:36].eval().to(device)
+            self.vgg = vgg19(weights=VGG19_Weights.DEFAULT).features[:36].eval().to(device)
         self.loss = nn.MSELoss()
 
         for param in self.vgg.parameters():
@@ -163,7 +163,7 @@ def train_discriminator(D, opt, fake, high_res, bce):
     loss_real = bce(pred_real, torch.ones_like(pred_real) - 0.1 * torch.rand_like(pred_real))
 
     # Train on fake data
-    pred_fake = D(fake.detach())
+    pred_fake = D(fake)
     loss_fake = bce(pred_fake, torch.zeros_like(pred_fake))
 
     loss = (loss_real + loss_fake)

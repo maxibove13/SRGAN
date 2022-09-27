@@ -9,6 +9,7 @@ __status__ = "Development"
 __date__ = "03/22"
 
 # Built-in modules
+import cv2
 import os
 
 # Third-party modules
@@ -18,6 +19,7 @@ from torch.utils.data import Dataset, DataLoader
 from PIL import Image
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
+from torchvision import transforms
 import yaml
 
 
@@ -28,13 +30,14 @@ with open('config.yaml') as file:
 low_res = config['data']['high_res']//config['data']['upscale_factor']
 
 class ImageDataset(Dataset):
-    def __init__(self, root_dir):
+    def __init__(self, root_dir, training=True):
         super(ImageDataset, self).__init__()
         self.data = []
         self.root_dir = root_dir
         self.class_names = os.listdir(root_dir)
         files = os.listdir(root_dir)
         self.data += list(zip(files, [1] * len(files)))
+        self.training = training
 
     def __len__(self):
         return len(self.data)
@@ -43,17 +46,20 @@ class ImageDataset(Dataset):
         img_file, label = self.data[index]
         root_and_dir = self.root_dir
 
-        image = np.array(Image.open(os.path.join(root_and_dir, img_file)))
         if config['data']['dataset'] == 'UxLES':
-          image = image[:,:,0:3]
-        image = both_transforms(image=image)["image"]
+            image = np.array(cv2.imread(os.path.join(root_and_dir, img_file), cv2.IMREAD_GRAYSCALE))
+            image = np.repeat(image[:, :, np.newaxis], 3, axis=2)
+        else:
+            image = np.array(Image.open(os.path.join(root_and_dir, img_file)))
+        if self.training:
+            image = both_transforms(image=image)["image"]
         high_res = highres_transform(image=image)["image"]
         low_res = lowres_transform(image=image)["image"]
         return low_res, high_res
 
 
 def test():
-    dataset = ImageDataset(root_dir="new_data/")
+    dataset = ImageDataset(root_dir=os.path.join(config['data']['rootdir'], config['data']['dataset'], 'train', 'dataset'))
     loader = DataLoader(dataset, batch_size=1, num_workers=8)
 
     for low_res, high_res in loader:
@@ -71,7 +77,7 @@ highres_transform = A.Compose(
 # Take a high res image, lower its resolution (24*24) and normalize it
 lowres_transform = A.Compose(
     [
-        A.Resize(width=low_res, height=low_res, interpolation=Image.BICUBIC),
+        A.Resize(width=low_res, height=low_res, interpolation=Image.Resampling.BICUBIC),
         A.Normalize(mean=[0, 0, 0], std=[1, 1, 1]),
         ToTensorV2(),
     ]
@@ -80,7 +86,7 @@ lowres_transform = A.Compose(
 # Take a high res image and lower its resolution
 lr_transform = A.Compose(
     [
-        A.Resize(width=low_res, height=low_res, interpolation=Image.BICUBIC),
+        A.Resize(width=low_res, height=low_res, interpolation=Image.Resampling.BICUBIC),
         ToTensorV2(),
     ]
 )
